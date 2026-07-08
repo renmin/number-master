@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>不要碰比我大的数字 - Number Master</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  overflow: hidden;
+  touch-action: none;
+  font-family: 'Segoe UI', sans-serif;
+  background: #1a1a2e;
+}
+canvas {
+  display: block;
+  margin: 0 auto;
+}
+#ui-layer {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#ui-layer.active { pointer-events: auto; }
+
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%; height: 100%;
+  position: absolute;
+  top: 0; left: 0;
+}
+.screen.visible { display: flex; }
+
+/* Main Menu */
+#menu-screen {
+  background: linear-gradient(180deg, #4A3AFF 0%, #6B5BFF 50%, #8B7BFF 100%);
+}
+.menu-title {
+  font-size: 42px;
+  font-weight: 900;
+  color: #FFD93D;
+  text-shadow: 0 4px 8px rgba(0,0,0,0.3), 0 2px 0 #E6A800;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.menu-subtitle {
+  font-size: 18px;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 40px;
+}
+.menu-mascot {
+  width: 120px; height: 120px;
+  background: #FFD93D;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  margin-bottom: 30px;
+  box-shadow: 0 8px 24px rgba(255,217,61,0.4);
+  position: relative;
+  animation: bounce 2s infinite;
+}
+.menu-mascot::before {
+  content: '◕ ◕';
+  position: absolute;
+  top: 20px;
+  font-size: 16px;
+  color: #333;
+  letter-spacing: 12px;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.btn {
+  padding: 16px 48px;
+  border: none;
+  border-radius: 50px;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  pointer-events: auto;
+  margin: 8px;
+}
+.btn:active { transform: scale(0.95); }
+.btn-start {
+  background: linear-gradient(180deg, #6BCB77, #4AA856);
+  color: #fff;
+  box-shadow: 0 6px 0 #3A8A46, 0 8px 16px rgba(0,0,0,0.3);
+  font-size: 26px;
+  padding: 18px 64px;
+}
+.btn-start:active {
+  box-shadow: 0 2px 0 #3A8A46;
+  transform: translateY(4px);
+}
+.btn-secondary {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.3);
+  font-size: 16px;
+  padding: 12px 32px;
+}
+.high-score {
+  color: #FFD93D;
+  font-size: 16px;
+  margin-top: 30px;
+  font-weight: 600;
+}
+.menu-numbers {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow: hidden;
+  opacity: 0.15;
+  pointer-events: none;
+}
+.floating-num {
+  position: absolute;
+  font-size: 40px;
+  font-weight: 900;
+  color: #fff;
+  animation: floatUp 8s infinite linear;
+}
+@keyframes floatUp {
+  0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+}
+
+/* Game HUD */
+#game-hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 12px 16px;
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+#game-hud.visible { display: flex; }
+.hud-level {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  background: rgba(0,0,0,0.3);
+  padding: 6px 16px;
+  border-radius: 20px;
+}
+.hud-progress {
+  flex: 1;
+  margin: 0 12px;
+  height: 8px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hud-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6BCB77, #FFD93D);
+  border-radius: 4px;
+  transition: width 0.3s;
+  width: 0%;
+}
+.hud-pause {
+  width: 36px; height: 36px;
+  background: rgba(0,0,0,0.3);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Result Screen */
+#result-screen {
+  background: rgba(0,0,0,0.85);
+}
+.result-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.result-stars {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.result-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #333;
+  margin-bottom: 20px;
+}
+.result-title.fail { color: #FF6B6B; }
+.result-stats {
+  text-align: left;
+  margin-bottom: 24px;
+}
+.result-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+  color: #555;
+  font-size: 15px;
+}
+.result-stat-value {
+  font-weight: 700;
+  color: #333;
+}
+.result-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.btn-result {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 50px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.btn-retry {
+  background: #FF6B6B;
+  color: #fff;
+}
+.btn-next {
+  background: linear-gradient(180deg, #6BCB77, #4AA856);
+  color: #fff;
+}
+.btn-menu {
+  background: #eee;
+  color: #666;
+}
+
+/* Combo display */
+#combo-display {
+  position: absolute;
+  top: 60px;
+  right: 16px;
+  font-size: 24px;
+  font-weight: 900;
+  color: #FFD93D;
+  text-shadow: 0 2px 8px rgba(255,217,61,0.5);
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 10;
+}
+#combo-display.visible { opacity: 1; }
+
+/* Current number display */
+#current-number {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.6);
+  color: #FFD93D;
+  font-size: 28px;
+  font-weight: 900;
+  padding: 8px 24px;
+  border-radius: 16px;
+  z-index: 10;
+  display: none;
+  backdrop-filter: blur(4px);
+}
+#current-number.visible { display: block; }
+
+/* Level select */
+#level-screen {
+  background: linear-gradient(180deg, #4A3AFF 0%, #6B5BFF 100%);
+  padding: 40px 20px;
+  overflow-y: auto;
+}
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  max-width: 350px;
+  margin-top: 20px;
+}
+.level-btn {
+  width: 56px; height: 56px;
+  border-radius: 12px;
+  border: none;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  transition: all 0.15s;
+}
+.level-btn.unlocked {
+  background: #fff;
+  color: #4A3AFF;
+}
+.level-btn.current {
+  background: #FFD93D;
+  color: #333;
+  box-shadow: 0 4px 12px rgba(255,217,61,0.4);
+}
+.level-btn:active { transform: scale(0.9); }
+.back-btn {
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.3);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  margin-top: 20px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- UI Layer -->
+<div id="ui-layer" class="active">
+  <!-- Main Menu -->
+  <div id="menu-screen" class="screen visible">
+    <div class="menu-numbers" id="menuNumbers"></div>
+    <div class="menu-mascot">1</div>
+    <div class="menu-title">不要碰比我大的数字</div>
+    <div class="menu-subtitle">Number Master</div>
+    <button class="btn btn-start" onclick="startGame()">开始游戏</button>
+    <button class="btn btn-secondary" onclick="showLevels()">选择关卡</button>
+    <div class="high-score" id="highScoreText">最高分：0</div>
+  </div>
+
+  <!-- Level Select -->
+  <div id="level-screen" class="screen">
+    <div class="menu-title" style="font-size:28px">选择关卡</div>
+    <div class="level-grid" id="levelGrid"></div>
+    <button class="back-btn" onclick="showMenu()">返回主菜单</button>
+  </div>
+
+  <!-- Result Screen -->
+  <div id="result-screen" class="screen">
+    <div class="result-card">
+      <div class="result-stars" id="resultStars"></div>
+      <div class="result-title" id="resultTitle"></div>
+      <div class="result-stats" id="resultStats"></div>
+      <div class="result-buttons" id="resultButtons"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Game HUD -->
+<div id="game-hud">
+  <button class="hud-pause" onclick="pauseGame()">⏸</button>
+  <div class="hud-level" id="hudLevel">关卡 1</div>
+  <div class="hud-progress"><div class="hud-progress-fill" id="hudProgress"></div></div>
+</div>
+
+<!-- Combo Display -->
+<div id="combo-display"></div>
+
+<!-- Current Number -->
+<div id="current-number"></div>
+
+<script>
+// ============ GAME ENGINE ============
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Sizing
+let W, H;
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============ GAME STATE ============
+const GameState = { MENU: 0, PLAYING: 1, RESULT: 2, PAUSED: 3, WALL_SMASH: 4 };
+let state = GameState.MENU;
+let currentLevel = 1;
+let highScore = parseInt(localStorage.getItem('nm_highscore') || '0');
+let unlockedLevel = parseInt(localStorage.getItem('nm_unlocked') || '1');
+
+// Player
+let player = { x: 0, y: 0, number: 1, radius: 30, targetX: 0 };
+let playerLane = 2; // 0-4 lanes
+
+// Track
+const TRACK_SPEED = 3;
+let trackOffset = 0;
+let trackLength = 0;
+let distanceTraveled = 0;
+
+// Obstacles
+let obstacles = [];
+let walls = [];
+let particles = [];
+let comboCount = 0;
+let comboTimer = 0;
+let score = 0;
+let wallsDestroyed = 0;
+let maxCombo = 0;
+
+// Level config
+function getLevelConfig(level) {
+  const difficulty = Math.floor((level - 1) / 10);
+  return {
+    playerStart: 1,
+    trackSegments: 15 + level * 2,
+    segmentLength: 150,
+    sawCount: Math.max(0, Math.floor((level - 5) / 3)),
+    wallCount: 3 + Math.floor(level / 2),
+    speed: TRACK_SPEED + level * 0.12,
+    theme: difficulty,
+    // New: controls how many numbers per segment and growth curve
+    densityPerSegment: 2 + Math.floor(level / 5),
+    gateCount: 3 + Math.floor(level / 3),  // boost gates (+N, xN)
+    dangerRatio: 0.15 + level * 0.015  // % of numbers that are dangerous (grows with level)
+  };
+}
+
+// Themes
+const THEMES = [
+  { bg1: '#87CEEB', bg2: '#E8F5E9', track: '#F5F5F5', edge: '#6BCB77', name: '草原' },
+  { bg1: '#FFB6C1', bg2: '#FFF0F5', track: '#FFF5EE', edge: '#FF69B4', name: '糖果' },
+  { bg1: '#006994', bg2: '#E0F7FA', track: '#B2EBF2', edge: '#00BCD4', name: '海洋' },
+  { bg1: '#1a0533', bg2: '#4A148C', track: '#2d1b69', edge: '#BA68C8', name: '宇宙' },
+  { bg1: '#1a0000', bg2: '#4E342E', track: '#3E2723', edge: '#FF5722', name: '火山' }
+];
+
+// ============ INPUT ============
+let inputX = 0;
+let isDragging = false;
+let dragStartX = 0;
+
+canvas.addEventListener('mousedown', e => { isDragging = true; dragStartX = e.clientX; });
+canvas.addEventListener('mousemove', e => {
+  if (isDragging && state === GameState.PLAYING) {
+    const dx = e.clientX - dragStartX;
+    player.targetX = Math.max(-trackWidth()/2 + 30, Math.min(trackWidth()/2 - 30, player.targetX + dx * 0.8));
+    dragStartX = e.clientX;
+  }
+});
+canvas.addEventListener('mouseup', () => { isDragging = false; });
+
+canvas.addEventListener('touchstart', e => {
+  isDragging = true;
+  dragStartX = e.touches[0].clientX;
+  e.preventDefault();
+});
+canvas.addEventListener('touchmove', e => {
+  if (isDragging && state === GameState.PLAYING) {
+    const dx = e.touches[0].clientX - dragStartX;
+    player.targetX = Math.max(-trackWidth()/2 + 30, Math.min(trackWidth()/2 - 30, player.targetX + dx * 0.8));
+    dragStartX = e.touches[0].clientX;
+  }
+  e.preventDefault();
+});
+canvas.addEventListener('touchend', () => { isDragging = false; });
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (state !== GameState.PLAYING) return;
+  if (e.key === 'ArrowLeft' || e.key === 'a') player.targetX -= 40;
+  if (e.key === 'ArrowRight' || e.key === 'd') player.targetX += 40;
+  player.targetX = Math.max(-trackWidth()/2 + 30, Math.min(trackWidth()/2 - 30, player.targetX));
+});
+
+function trackWidth() { return Math.min(W * 0.75, 320); }
+
+// ============ LEVEL GENERATION ============
+// Key insight from studying Number Master (KAYAC):
+// - Track is divided into zones; numbers grow proportionally with distance
+// - Early zone: mostly small numbers (1-3) so player can grow from 1
+// - Boost gates (+N, xN) appear periodically to let player scale up
+// - Dangerous (red) numbers appear sparsely at first, more later
+// - The player's "expected value" at each point determines what's safe/dangerous
+// - Numbers are placed in lanes (left/right choices matter)
+
+function generateLevel(level) {
+  const config = getLevelConfig(level);
+  obstacles = [];
+  walls = [];
+  particles = [];
+  comboCount = 0;
+  comboTimer = 0;
+  score = 0;
+  wallsDestroyed = 0;
+  maxCombo = 0;
+  distanceTraveled = 0;
+
+  player.number = config.playerStart;
+  player.targetX = 0;
+  player.x = 0;
+  player.y = H * 0.75;
+
+  const tw = trackWidth();
+  trackLength = config.trackSegments * config.segmentLength;
+
+  // Simulate expected player growth to place appropriate numbers
+  // Zone-based generation: divide track into zones
+  const numZones = 6;
+  const zoneLength = trackLength / numZones;
+
+  // Expected player value at each zone (simulated ideal growth curve)
+  // Start at 1, grow exponentially so player feels progression
+  const expectedValues = [1, 4, 12, 35, 80, 180];
+  // Scale expected values based on level
+  const levelScale = 1 + (level - 1) * 0.3;
+  const scaledExpected = expectedValues.map(v => Math.max(1, Math.floor(v * levelScale)));
+
+  // Generate numbers zone by zone
+  for (let zone = 0; zone < numZones; zone++) {
+    const zoneStart = zone * zoneLength + 120;
+    const zoneEnd = (zone + 1) * zoneLength;
+    const expectedPlayerVal = scaledExpected[zone];
+    const numObstacles = config.densityPerSegment + Math.floor(zone * 0.5);
+
+    for (let i = 0; i < numObstacles; i++) {
+      const dist = zoneStart + Math.random() * (zoneEnd - zoneStart);
+      const laneX = (Math.random() - 0.5) * (tw - 60);
+
+      // Decide if this number is safe (eatable) or dangerous
+      const isDangerous = Math.random() < config.dangerRatio + zone * 0.03;
+      let num;
+
+      if (isDangerous) {
+        // Dangerous: larger than expected player value at this zone
+        // Make it clearly bigger so player knows to avoid
+        num = expectedPlayerVal + Math.floor(Math.random() * expectedPlayerVal * 0.8) + 3;
+      } else {
+        // Safe: smaller than expected player value
+        // Most should be clearly eatable (50-80% of expected value)
+        if (zone === 0) {
+          // First zone: always tiny numbers (1-3) since player starts at 1
+          num = 1;
+        } else {
+          // Later zones: numbers scale but stay below expected
+          const maxSafe = Math.max(1, Math.floor(expectedPlayerVal * 0.7));
+          num = Math.max(1, Math.floor(Math.random() * maxSafe) + 1);
+        }
+      }
+
+      obstacles.push({
+        type: 'number',
+        x: laneX,
+        dist: dist,
+        number: num,
+        radius: 22 + Math.min(num.toString().length * 3, 12),
+        alive: true
+      });
+    }
+  }
+
+  // Generate boost gates (the key mechanic that lets player grow quickly!)
+  // These are special "gate" obstacles that add or multiply the player's number
+  const gateSpacing = trackLength / (config.gateCount + 1);
+  for (let i = 0; i < config.gateCount; i++) {
+    const dist = gateSpacing * (i + 1);
+    const zone = Math.floor(dist / zoneLength);
+    const expectedVal = scaledExpected[Math.min(zone, numZones - 1)];
+
+    // Alternate between add gates and multiply gates
+    let gateType, gateValue;
+    if (i % 3 === 2 && level > 2) {
+      // Multiply gate (appears less often, more impactful)
+      gateType = 'multiply';
+      gateValue = 2;
+    } else {
+      // Add gate
+      gateType = 'add';
+      gateValue = Math.max(2, Math.floor(expectedVal * 0.4));
+    }
+
+    // Place gate as a pair (left side = good gate, right side = bad option or smaller gate)
+    // Good gate on one side
+    obstacles.push({
+      type: 'gate',
+      gateType: gateType,
+      gateValue: gateValue,
+      x: -tw * 0.22,
+      dist: dist,
+      radius: 28,
+      alive: true
+    });
+    // Worse option on other side (smaller add or subtract)
+    const altValue = Math.max(1, Math.floor(gateValue * 0.4));
+    obstacles.push({
+      type: 'gate',
+      gateType: 'add',
+      gateValue: altValue,
+      x: tw * 0.22,
+      dist: dist,
+      radius: 28,
+      alive: true
+    });
+  }
+
+  // Generate saws (hazards)
+  for (let i = 0; i < config.sawCount; i++) {
+    const dist = 400 + Math.random() * (trackLength - 600);
+    const laneX = (Math.random() - 0.5) * (tw - 80);
+    obstacles.push({
+      type: 'saw',
+      x: laneX,
+      dist: dist,
+      radius: 25,
+      rotation: 0,
+      alive: true
+    });
+  }
+
+  // Sort by distance
+  obstacles.sort((a, b) => a.dist - b.dist);
+
+  // Generate walls at end - scale with expected final player value
+  const expectedFinal = scaledExpected[numZones - 1];
+  let wallDist = trackLength + 100;
+  for (let i = 0; i < config.wallCount; i++) {
+    const wallHP = Math.floor(expectedFinal * 0.15 * Math.pow(1.6, i));
+    walls.push({
+      dist: wallDist,
+      hp: wallHP,
+      maxHp: wallHP,
+      width: tw,
+      destroyed: false
+    });
+    wallDist += 80;
+  }
+}
+
+// ============ PARTICLES ============
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 0.5) * 8 - 3,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      size: 3 + Math.random() * 5,
+      color
+    });
+  }
+}
+
+function spawnNumberPopup(x, y, text, color) {
+  particles.push({
+    x, y,
+    vx: 0,
+    vy: -2,
+    life: 1,
+    decay: 0.015,
+    size: 0,
+    color,
+    text,
+    isText: true
+  });
+}
+
+// ============ GAME LOGIC ============
+function update() {
+  if (state !== GameState.PLAYING && state !== GameState.WALL_SMASH) return;
+
+  const config = getLevelConfig(currentLevel);
+  const speed = config.speed;
+
+  // Move player smoothly
+  player.x += (player.targetX - player.x) * 0.15;
+
+  // Advance track
+  distanceTraveled += speed;
+
+  // Update progress
+  const progress = Math.min(distanceTraveled / (trackLength + walls.length * 80), 1);
+  document.getElementById('hudProgress').style.width = (progress * 100) + '%';
+
+  // Combo timer
+  if (comboTimer > 0) {
+    comboTimer--;
+    if (comboTimer <= 0) comboCount = 0;
+  }
+
+  // Check collisions with obstacles
+  for (let obs of obstacles) {
+    if (!obs.alive) continue;
+    const relDist = obs.dist - distanceTraveled;
+    if (relDist > 200 || relDist < -50) continue;
+
+    const screenY = player.y - relDist * 0.8;
+    if (screenY < -50) continue;
+
+    const dx = player.x - obs.x;
+    const dy = player.y - screenY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist < player.radius + obs.radius - 5) {
+      if (obs.type === 'saw') {
+        gameOver();
+        return;
+      }
+      if (obs.type === 'gate') {
+        // Boost gate: add or multiply
+        obs.alive = false;
+        if (obs.gateType === 'multiply') {
+          player.number *= obs.gateValue;
+        } else {
+          player.number += obs.gateValue;
+        }
+        spawnParticles(W/2 + obs.x, screenY, '#6BCB77', 12);
+        const label = obs.gateType === 'multiply' ? `×${obs.gateValue}` : `+${obs.gateValue}`;
+        spawnNumberPopup(W/2 + obs.x, screenY - 20, label, '#6BCB77');
+        score += obs.gateValue * 5;
+        playSound('eat');
+      }
+      if (obs.type === 'number') {
+        if (obs.number <= player.number) {
+          // Eat it!
+          player.number += obs.number;
+          obs.alive = false;
+          comboCount++;
+          maxCombo = Math.max(maxCombo, comboCount);
+          comboTimer = 90;
+          score += obs.number * (1 + comboCount * 0.5);
+          spawnParticles(W/2 + obs.x, screenY, '#4FC3F7', 8);
+          spawnNumberPopup(W/2 + obs.x, screenY - 20, '+' + obs.number, '#4FC3F7');
+          updateComboDisplay();
+          playSound('eat');
+        } else {
+          // Hit bigger number - game over!
+          spawnParticles(W/2 + player.x, player.y, '#FF6B6B', 20);
+          playSound('crash');
+          gameOver();
+          return;
+        }
+      }
+    }
+  }
+
+  // Wall smashing phase
+  if (distanceTraveled >= trackLength) {
+    state = GameState.WALL_SMASH;
+    for (let wall of walls) {
+      if (wall.destroyed) continue;
+      const relDist = wall.dist - distanceTraveled;
+      if (relDist <= 0 && !wall.destroyed) {
+        if (player.number > wall.hp) {
+          player.number -= wall.hp;
+          wall.destroyed = true;
+          wallsDestroyed++;
+          score += wall.maxHp * 2;
+          spawnParticles(W/2, H * 0.4, getWallColor(wall.maxHp), 25);
+          playSound('wall');
+        } else {
+          // Can't break this wall - level complete
+          showResult(true);
+          return;
+        }
+      }
+    }
+    // All walls destroyed
+    if (walls.every(w => w.destroyed)) {
+      showResult(true);
+      return;
+    }
+  }
+
+  // Update particles
+  particles = particles.filter(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.2;
+    p.life -= p.decay;
+    return p.life > 0;
+  });
+
+  // Update current number display
+  document.getElementById('current-number').textContent = player.number;
+}
+
+function getWallColor(hp) {
+  if (hp < 50) return '#4FC3F7';
+  if (hp < 100) return '#6BCB77';
+  if (hp < 200) return '#FFD93D';
+  if (hp < 500) return '#FF8C42';
+  return '#FF6B6B';
+}
+
+// ============ RENDERING ============
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  if (state === GameState.MENU || state === GameState.RESULT) return;
+
+  const config = getLevelConfig(currentLevel);
+  const theme = THEMES[config.theme % THEMES.length];
+  const tw = trackWidth();
+  const cx = W / 2;
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, theme.bg1);
+  bgGrad.addColorStop(1, theme.bg2);
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Track perspective
+  const trackLeft = cx - tw / 2;
+  const trackRight = cx + tw / 2;
+
+  // Track surface
+  ctx.fillStyle = theme.track;
+  ctx.fillRect(trackLeft, 0, tw, H);
+
+  // Track edge lines
+  ctx.strokeStyle = theme.edge;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(trackLeft, 0);
+  ctx.lineTo(trackLeft, H);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(trackRight, 0);
+  ctx.lineTo(trackRight, H);
+  ctx.stroke();
+
+  // Lane dividers
+  ctx.strokeStyle = 'rgba(0,0,0,0.05)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([20, 20]);
+  for (let i = 1; i < 4; i++) {
+    const lx = trackLeft + (tw / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(lx, 0);
+    ctx.lineTo(lx, H);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Track markings (moving lines)
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 2;
+  const markSpacing = 80;
+  const markOffset = (distanceTraveled * 0.8) % markSpacing;
+  for (let y = -markSpacing + markOffset; y < H + markSpacing; y += markSpacing) {
+    ctx.beginPath();
+    ctx.moveTo(trackLeft + 10, y);
+    ctx.lineTo(trackRight - 10, y);
+    ctx.stroke();
+  }
+
+  // Render obstacles
+  for (let obs of obstacles) {
+    if (!obs.alive) continue;
+    const relDist = obs.dist - distanceTraveled;
+    const screenY = player.y - relDist * 0.8;
+
+    if (screenY < -60 || screenY > H + 60) continue;
+
+    const screenX = cx + obs.x;
+    const scale = Math.max(0.5, Math.min(1.2, 1 - (player.y - screenY) / H * 0.5));
+
+    if (obs.type === 'gate') {
+      // Boost gate rendering - green rounded rectangle with +N or xN
+      const gw = 50 * scale;
+      const gh = 30 * scale;
+
+      ctx.fillStyle = '#6BCB77';
+      ctx.beginPath();
+      ctx.roundRect(screenX - gw/2, screenY - gh/2, gw, gh, 8 * scale);
+      ctx.fill();
+
+      // Border
+      ctx.strokeStyle = '#4AA856';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(screenX - gw/2, screenY - gh/2, gw, gh, 8 * scale);
+      ctx.stroke();
+
+      // Gate text
+      const label = obs.gateType === 'multiply' ? `×${obs.gateValue}` : `+${obs.gateValue}`;
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.floor(14 * scale)}px 'Segoe UI'`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, screenX, screenY);
+
+    } else if (obs.type === 'number') {
+      // Dynamic color: compare against CURRENT player number (not static)
+      const isSmall = obs.number <= player.number;
+      const color = isSmall ? '#4FC3F7' : '#FF6B6B';
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath();
+      ctx.ellipse(screenX, screenY + obs.radius * scale * 0.8, obs.radius * scale * 0.8, obs.radius * scale * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ball
+      const grad = ctx.createRadialGradient(
+        screenX - obs.radius * 0.3 * scale, screenY - obs.radius * 0.3 * scale, 0,
+        screenX, screenY, obs.radius * scale
+      );
+      grad.addColorStop(0, isSmall ? '#81D4FA' : '#FF8A80');
+      grad.addColorStop(1, color);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(screenX, screenY, obs.radius * scale, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Number text
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${Math.floor(14 * scale)}px 'Segoe UI'`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(obs.number, screenX, screenY);
+
+    } else if (obs.type === 'saw') {
+      obs.rotation = (obs.rotation || 0) + 0.1;
+      ctx.save();
+      ctx.translate(screenX, screenY);
+      ctx.rotate(obs.rotation);
+      ctx.scale(scale, scale);
+
+      // Saw blade
+      ctx.fillStyle = '#78909C';
+      ctx.beginPath();
+      const teeth = 8;
+      for (let i = 0; i < teeth; i++) {
+        const angle = (i / teeth) * Math.PI * 2;
+        const r = i % 2 === 0 ? obs.radius : obs.radius * 0.7;
+        ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      // Center
+      ctx.fillStyle = '#455A64';
+      ctx.beginPath();
+      ctx.arc(0, 0, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  // Render walls
+  for (let wall of walls) {
+    if (wall.destroyed) continue;
+    const relDist = wall.dist - distanceTraveled;
+    const screenY = player.y - relDist * 0.8;
+
+    if (screenY < -100 || screenY > H + 50) continue;
+
+    const wallH = 40;
+    const color = getWallColor(wall.maxHp);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - tw/2, screenY - wallH/2, tw, wallH);
+
+    // Wall border
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx - tw/2, screenY - wallH/2, tw, wallH);
+
+    // Wall HP text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(wall.hp, cx, screenY);
+  }
+
+  // Render player
+  const px = cx + player.x;
+  const py = player.y;
+  const pr = player.radius;
+
+  // Player shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(px, py + pr * 0.8, pr * 0.7, pr * 0.25, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Player ball
+  const pGrad = ctx.createRadialGradient(px - pr * 0.3, py - pr * 0.3, 0, px, py, pr);
+  pGrad.addColorStop(0, '#FFEB3B');
+  pGrad.addColorStop(0.7, '#FFD93D');
+  pGrad.addColorStop(1, '#FFC107');
+  ctx.fillStyle = pGrad;
+  ctx.beginPath();
+  ctx.arc(px, py, pr, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Player glow
+  ctx.shadowColor = '#FFD93D';
+  ctx.shadowBlur = 15;
+  ctx.beginPath();
+  ctx.arc(px, py, pr, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Player face
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(px - 7, py - 6, 3, 0, Math.PI * 2);
+  ctx.arc(px + 7, py - 6, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Smile
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(px, py - 2, 8, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  // Player number
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.min(18, 18 - player.number.toString().length)}px Segoe UI`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(player.number, px, py + 12);
+
+  // Render particles
+  for (let p of particles) {
+    if (p.isText) {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 20px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.text, p.x, p.y);
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+// ============ AUDIO ============
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+}
+
+function playSound(type) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  switch(type) {
+    case 'eat':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600 + comboCount * 80, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900 + comboCount * 80, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+      break;
+    case 'crash':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+      break;
+    case 'wall':
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+      break;
+    case 'win':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+      break;
+  }
+}
+
+// ============ UI FUNCTIONS ============
+function updateComboDisplay() {
+  const el = document.getElementById('combo-display');
+  if (comboCount >= 2) {
+    el.textContent = `Combo x${comboCount}!`;
+    el.classList.add('visible');
+  } else {
+    el.classList.remove('visible');
+  }
+}
+
+function startGame(level) {
+  initAudio();
+  currentLevel = level || currentLevel;
+  generateLevel(currentLevel);
+  state = GameState.PLAYING;
+
+  document.getElementById('ui-layer').classList.remove('active');
+  hideAllScreens();
+  document.getElementById('game-hud').classList.add('visible');
+  document.getElementById('current-number').classList.add('visible');
+  document.getElementById('hudLevel').textContent = `关卡 ${currentLevel}`;
+  document.getElementById('combo-display').classList.remove('visible');
+}
+
+function pauseGame() {
+  if (state === GameState.PLAYING) {
+    state = GameState.PAUSED;
+    document.getElementById('ui-layer').classList.add('active');
+    showResult(false, true);
+  }
+}
+
+function gameOver() {
+  state = GameState.RESULT;
+  showResult(false);
+}
+
+function showResult(won, paused) {
+  state = GameState.RESULT;
+  document.getElementById('game-hud').classList.remove('visible');
+  document.getElementById('current-number').classList.remove('visible');
+  document.getElementById('combo-display').classList.remove('visible');
+  document.getElementById('ui-layer').classList.add('active');
+  document.getElementById('result-screen').classList.add('visible');
+
+  const stars = won ? (wallsDestroyed >= walls.length ? 3 : wallsDestroyed >= walls.length / 2 ? 2 : 1) : 0;
+  const totalScore = Math.floor(score + player.number * 10 + wallsDestroyed * 100);
+
+  if (totalScore > highScore) {
+    highScore = totalScore;
+    localStorage.setItem('nm_highscore', highScore);
+  }
+
+  if (won && currentLevel >= unlockedLevel) {
+    unlockedLevel = currentLevel + 1;
+    localStorage.setItem('nm_unlocked', unlockedLevel);
+  }
+
+  if (paused) {
+    document.getElementById('resultStars').textContent = '⏸';
+    document.getElementById('resultTitle').textContent = '暂停';
+    document.getElementById('resultTitle').className = 'result-title';
+    document.getElementById('resultStats').innerHTML = '';
+    document.getElementById('resultButtons').innerHTML = `
+      <button class="btn-result btn-next" onclick="resumeGame()">继续</button>
+      <button class="btn-result btn-retry" onclick="startGame(${currentLevel})">重新开始</button>
+      <button class="btn-result btn-menu" onclick="showMenu()">主菜单</button>
+    `;
+    return;
+  }
+
+  document.getElementById('resultStars').textContent = won ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '✗';
+  document.getElementById('resultTitle').textContent = won ? '关卡通过！' : '游戏失败';
+  document.getElementById('resultTitle').className = 'result-title' + (won ? '' : ' fail');
+
+  document.getElementById('resultStats').innerHTML = `
+    <div class="result-stat"><span>最终数字</span><span class="result-stat-value">${player.number}</span></div>
+    <div class="result-stat"><span>摧毁墙壁</span><span class="result-stat-value">${wallsDestroyed} / ${walls.length}</span></div>
+    <div class="result-stat"><span>最高连击</span><span class="result-stat-value">x${maxCombo}</span></div>
+    <div class="result-stat"><span>总分</span><span class="result-stat-value" style="color:#FFD93D;font-size:18px">${totalScore}</span></div>
+  `;
+
+  let btns = '';
+  btns += `<button class="btn-result btn-retry" onclick="startGame(${currentLevel})">重玩</button>`;
+  if (won) {
+    btns += `<button class="btn-result btn-next" onclick="startGame(${currentLevel + 1})">下一关</button>`;
+    if (won) playSound('win');
+  }
+  btns += `<button class="btn-result btn-menu" onclick="showMenu()">菜单</button>`;
+  document.getElementById('resultButtons').innerHTML = btns;
+}
+
+function resumeGame() {
+  state = GameState.PLAYING;
+  document.getElementById('ui-layer').classList.remove('active');
+  hideAllScreens();
+  document.getElementById('game-hud').classList.add('visible');
+  document.getElementById('current-number').classList.add('visible');
+}
+
+function showMenu() {
+  state = GameState.MENU;
+  document.getElementById('ui-layer').classList.add('active');
+  hideAllScreens();
+  document.getElementById('menu-screen').classList.add('visible');
+  document.getElementById('game-hud').classList.remove('visible');
+  document.getElementById('current-number').classList.remove('visible');
+  document.getElementById('highScoreText').textContent = `最高分：${highScore}`;
+}
+
+function showLevels() {
+  hideAllScreens();
+  document.getElementById('level-screen').classList.add('visible');
+  const grid = document.getElementById('levelGrid');
+  grid.innerHTML = '';
+  for (let i = 1; i <= 20; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'level-btn' + (i <= unlockedLevel ? ' unlocked' : '') + (i === currentLevel ? ' current' : '');
+    btn.textContent = i;
+    if (i <= unlockedLevel) {
+      btn.onclick = () => { currentLevel = i; startGame(i); };
+    }
+    grid.appendChild(btn);
+  }
+}
+
+function hideAllScreens() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('visible'));
+}
+
+// ============ FLOATING NUMBERS (menu decoration) ============
+function initMenuNumbers() {
+  const container = document.getElementById('menuNumbers');
+  container.innerHTML = '';
+  for (let i = 0; i < 15; i++) {
+    const el = document.createElement('div');
+    el.className = 'floating-num';
+    el.textContent = Math.floor(Math.random() * 999) + 1;
+    el.style.left = Math.random() * 100 + '%';
+    el.style.animationDelay = Math.random() * 8 + 's';
+    el.style.fontSize = (20 + Math.random() * 30) + 'px';
+    container.appendChild(el);
+  }
+}
+initMenuNumbers();
+
+// ============ GAME LOOP ============
+function gameLoop() {
+  update();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+gameLoop();
+
+// Update high score display
+document.getElementById('highScoreText').textContent = `最高分：${highScore}`;
+</script>
+</body>
+</html>
